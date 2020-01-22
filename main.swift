@@ -1,4 +1,3 @@
-
 import Foundation
 import CommonCrypto
 
@@ -11,7 +10,7 @@ class MessageDigest {
     private let hashLength = Int(CC_SHA512_DIGEST_LENGTH)
     private let context = UnsafeMutablePointer<CC_SHA512_CTX>.allocate(capacity: 1)
     
-    init(_ data: Data? = nil) throws {
+    init(_ data: Data? = nil) {
         CC_SHA512_Init(context)
         if let data = data {
             update(data)
@@ -34,10 +33,8 @@ class MessageDigest {
         return finish()
     }
     
-    class func sha512(password: String, salt: String) throws -> String {
-//        let dataPassword: Data = password.data(using: .utf8)!
-//        let dataSalt: Data = salt.data(using: .utf8)!
-        let hash = try _raw_sha2_crypt(pwdString: password, saltString: salt, rounds: 5000) // 656000
+    class func crypt3sha512(password: String, salt: String) throws -> String {
+        let hash = try _raw_sha2_crypt(password: password, salt: salt)
         return "$6$\(salt)$\(hash)"
     }
 }
@@ -58,8 +55,20 @@ let _512_transpose_map = [
     16, 58, 37, 38, 17, 59, 60, 39, 18, 19, 61, 40, 41, 20, 62, 63,
 ]
 
-
-func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws -> String {
+/** Perform raw sha256-crypt / sha512-crypt
+ 
+ This function provides a pure-python implementation of the internals
+ for the SHA256-Crypt and SHA512-Crypt algorithms; it doesn't
+ handle any of the parsing/validation of the hash strings themselves.
+ 
+ - Parameter password: chars/bytes to hash
+ - Parameter salt: salt chars to use
+ - Parameter rounds: linear rounds cost
+ - Parameter use512: use sha512-crypt instead of sha256-crypt mode
+ 
+ - Returns: encoded checksum chars
+ */
+func _raw_sha2_crypt(password pwdString: String, salt saltString: String, rounds: Int = 5000, use512: Bool = true) throws -> String {
     /* perform raw sha256-crypt / sha512-crypt
      this function provides a pure-python implementation of the internals
      for the SHA256-Crypt and SHA512-Crypt algorithms; it doesn't
@@ -107,7 +116,7 @@ func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws 
     //  NOTE: spec says salts larger than 16 bytes should be truncated,
     //  instead of causing an error. this function assumes that's been
     //  taken care of by the handler class.
-    
+
     //  load sha256/512 specific constants
     let hash_const = MessageDigest.init
     let transpose_map = _512_transpose_map
@@ -116,7 +125,7 @@ func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws 
     //  digest B - used as subinput to digest A
     // ===================================================================
     let db = try hash_const(pwd + salt + pwd).digest()
-    
+
     // ===================================================================
     //  digest A - used to initialize first round of digest C
     // ===================================================================
@@ -135,7 +144,7 @@ func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws 
     
     //  finish A
     let da = a_ctx.digest()
-    
+
     // ===================================================================
     //  digest P from password - used instead of password itself
     //                           when calculating digest C.
@@ -156,13 +165,13 @@ func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws 
         dp = repeat_string(tmp_ctx.digest(), pwd_len)
     }
     assert(dp.count == pwd_len)
-    
+
     // ===================================================================
     //  digest S  - used instead of salt itself when calculating digest C
     // ===================================================================
     let ds = try hash_const(salt * (16 + Int(da[0]))).digest()[0..<salt_len]
     assert(ds.count == salt_len, "salt_len somehow > hash_len!")
-    
+
     // ===================================================================
     //  digest C - for a variable number of rounds, combine A, S, and P
     //             digests in various ways; in order to burn CPU time.
@@ -213,7 +222,6 @@ func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws 
     
     //  build up list of even-round & odd-round constants,
     //  and store in 21-element list as (even,odd) pairs.
-//    let data = [ (perms[even], perms[odd]) for even, odd in _c_digest_offsets]
     let data = _c_digest_offsets.map { (perms[Int($0.0)], perms[Int($0.1)]) }
     
     //  perform as many full 42-round blocks as possible
@@ -222,9 +230,11 @@ func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws 
     while blocks > 0 {
         for (even, odd) in data {
             dc = try hash_const(odd + hash_const(dc + even).digest()).digest()
-            blocks -= 1
         }
+        blocks -= 1
     }
+    
+    print(dc.base64EncodedString())
         
     // perform any leftover rounds
     if tail != 0 {
@@ -240,6 +250,8 @@ func _raw_sha2_crypt(pwdString: String, saltString: String, rounds: Int) throws 
             }
         }
     }
+    
+    print(dc.base64EncodedString())
     
     // ===================================================================
     //  encode digest using appropriate transpose map
@@ -306,14 +318,12 @@ class Base64Engine {
         let (chunks, tail) = source.count.divMod(3)
         var next_value = source.makeIterator()
         let gen = self._encode_bytes_little(&next_value, chunks, tail)
-//        let out = join_byte_elems(imap(self._encode64, gen))
-        let chars = self.bytemap.cString(using: .ascii)!
-        let out = gen.map { chars[Int($0)] }
+        let chars = self.bytemap.cString(using: .ascii)![0..<64]
+        let out: [CChar] = gen.map { chars[Int($0)] } + [0]
         return String(cString: out)
     }
 
     func encode_transposed_bytes(_ source: Data, _ offsets: [Int]) -> String {
-//        let tmp = join_byte_elems(source[off] for off in offsets)
         let tmp = offsets.map { source[$0] }
         return self.encode_bytes(tmp)
     }
