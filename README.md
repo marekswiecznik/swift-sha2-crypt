@@ -15,5 +15,6 @@ This is a Swift port of a pure-python implementation of the internals for the SH
 ## Credits
 
 Original implementation of the SHA2_crypt handler form Passlib python library:  https://github.com/efficks/passlib/blob/master/passlib/handlers/sha2_crypt.py.
+
 Passlib is (c) Assurance Technologies, and is released under the BSD license: https://github.com/efficks/passlib/blob/master/LICENSE
 
