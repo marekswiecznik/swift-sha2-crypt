@@ -10,16 +10,15 @@ import XCTest
 @testable import Sha2Crypt
 
 class SHA2CryptTests: XCTestCase {
-    // FIXME change data without salt
     let expected: [(String, String, String)] = [
-        ("#?>C?<SDJR@#$I)EWJSDFOSAą", "123456", "$6$123456$7zVptl5ZShqAa98votK1RWoe9vxsylMpYY65/TX6fuWFK8L01GTNOnn2ojvmNWQ32K4Z./MSug1Y1HV0mge9V/"),
-        ("FHome", "123456", "$6$123456$QNg.uIOwxOhnOsTnpEyAGeHfKNMkHQcm.wKdxfglXtwHoj5NMNb8HKwBn4Wjvhvl3JHNdj0edjyAc/0uNUCOm0"),
-        ("123456", "FHome", "$6$FHome$ZCLzvRGQTKjiZr1PPtmvaIUKpy7Ulp2C6oeWQMYnt1/QzETIEjXaLe9S0/JL50sttYZHemM7z/TffOak3CgpA/")
+        ("123456", "SomeSalt", "$6$SomeSalt$pYs2RqI5HAFSVGMxB0kYEJhW.EUPnQnodWGXUEX4bMHUebq5/L7I/d1jpfTZMarhR8ughk7XCHjITyBG4bj3M/"),
+        ("@#$@#LFDS)I@#(HEFDSłóźżń", "123456", "$6$123456$J7Tjxj.OYfFoWqTlpAG.mqUmay0jgjHDppojZYZ2Pac.0d3IzDv8B3WoSc2eJYQchx3xV8ZTKaSFWapjJz2.P."),
+        ("SimplePassword", "TJGEDFSHVasd123", "$6$TJGEDFSHVasd123$lCFvTOp0y84tP5438c2rIhCsinaHsdpFDgPKBtsOMeLU350o831UJnj64rSvVa9Urw0liS7LYur6X5gazyFqA.")
     ]
 
     func testSha512Crypt() throws {
         for (pass, salt, expected) in self.expected {
-            let actual = try sha512Crypt(password: pass, salt: salt)
+            let actual = sha512Crypt(password: pass, salt: salt)
             XCTAssertEqual(expected, actual)
         }
     }
